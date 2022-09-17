@@ -12,23 +12,23 @@
 
 #include <random>
 
-GLuint hexapod_meshes_for_lit_color_texture_program = 0;
-Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));
-	hexapod_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+GLuint meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("ping_pong.pnct"));
+    meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
-Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("hexapod.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
-		Mesh const &mesh = hexapod_meshes->lookup(mesh_name);
+Load< Scene > ping_pong_scene(LoadTagDefault, []() -> Scene const * {
+	return new Scene(data_path("ping_pong.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
 		Scene::Drawable &drawable = scene.drawables.back();
 
 		drawable.pipeline = lit_color_texture_program_pipeline;
 
-		drawable.pipeline.vao = hexapod_meshes_for_lit_color_texture_program;
+		drawable.pipeline.vao = meshes_for_lit_color_texture_program;
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
@@ -40,20 +40,17 @@ Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample c
 	return new Sound::Sample(data_path("dusty-floor.opus"));
 });
 
-PlayMode::PlayMode() : scene(*hexapod_scene) {
+PlayMode::PlayMode() : scene(*ping_pong_scene) {
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
-		if (transform.name == "Hip.FL") hip = &transform;
-		else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
-		else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
+		if (transform.name == "player_paddle") {
+            player_paddle = Paddle(&transform);
+        }
+		else if (transform.name == "ball") {
+            ball = Ball(&transform);
+        }
+		else if (transform.name == "cpu_paddle") cpu_paddle = &transform;
 	}
-	if (hip == nullptr) throw std::runtime_error("Hip not found.");
-	if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
-	if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
-
-	hip_base_rotation = hip->rotation;
-	upper_leg_base_rotation = upper_leg->rotation;
-	lower_leg_base_rotation = lower_leg->rotation;
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -61,7 +58,7 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
-	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
+//	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
 }
 
 PlayMode::~PlayMode() {
@@ -70,56 +67,66 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_ESCAPE) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
-			left.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
-			right.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
-			up.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
-			down.pressed = true;
-			return true;
+        if(evt.key.keysym.sym == SDLK_SPACE) {
+            if(game_state == Start) {
+                game_state = Playing;
+                timing_info.previous_rally_complete = 0;
+                on_hit();
+            } else {
+                on_swing_attempt();
+            }
+            return true;
+        }
+//		if (evt.key.keysym.sym == SDLK_ESCAPE) {
+//			SDL_SetRelativeMouseMode(SDL_FALSE);
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_a) {
+//			left.downs += 1;
+//			left.pressed = true;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_d) {
+//			right.downs += 1;
+//			right.pressed = true;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_w) {
+//			up.downs += 1;
+//			up.pressed = true;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_s) {
+//			down.downs += 1;
+//			down.pressed = true;
+//			return true;
 		}
-	} else if (evt.type == SDL_KEYUP) {
-		if (evt.key.keysym.sym == SDLK_a) {
-			left.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.pressed = false;
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+//	} else if (evt.type == SDL_KEYUP) {
+//		if (evt.key.keysym.sym == SDLK_a) {
+//			left.pressed = false;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_d) {
+//			right.pressed = false;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_w) {
+//			up.pressed = false;
+//			return true;
+//		} else if (evt.key.keysym.sym == SDLK_s) {
+//			down.pressed = false;
+//			return true;
+//		}
+//	} else
+    if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 			return true;
 		}
 	} else if (evt.type == SDL_MOUSEMOTION) {
+        if (game_state == Start) {
+            return true;
+        }
 		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
 			glm::vec2 motion = glm::vec2(
 				evt.motion.xrel / float(window_size.y),
 				-evt.motion.yrel / float(window_size.y)
 			);
-			camera->transform->rotation = glm::normalize(
-				camera->transform->rotation
-				* glm::angleAxis(-motion.x * camera->fovy, glm::vec3(0.0f, 1.0f, 0.0f))
-				* glm::angleAxis(motion.y * camera->fovy, glm::vec3(1.0f, 0.0f, 0.0f))
-			);
+			player_paddle.transform->position += glm::vec3(motion.x, 0, motion.y);
 			return true;
 		}
 	}
@@ -128,48 +135,31 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+    if(game_state == Start) {
+        return;
+    }
 
-	//slowly rotates through [0,1):
-	wobble += elapsed / 10.0f;
-	wobble -= std::floor(wobble);
+    time_elapsed += elapsed;
 
-	hip->rotation = hip_base_rotation * glm::angleAxis(
-		glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 1.0f, 0.0f)
-	);
-	upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-		glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
-	lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-		glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
+    { //update ball position
+        float time_since_hit = time_elapsed - timing_info.previous_rally_complete;
+        float rally_length = timing_info.current_rally_complete - timing_info.previous_rally_complete;
+        ball.update( time_since_hit / rally_length );
+        if(!timing_info.hasBounced && time_elapsed >= timing_info.previous_rally_complete + timing_info.rally_time / 2) {
+            on_bounce();
+            timing_info.hasBounced = true;
+        }
+    }
 
-	//move sound to follow leg tip position:
-	leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
-
-	//move camera:
-	{
-
-		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
-
-		//make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 frame_right = frame[0];
-		//glm::vec3 up = frame[1];
-		glm::vec3 frame_forward = -frame[2];
-
-		camera->transform->position += move.x * frame_right + move.y * frame_forward;
-	}
+    //position checks
+    //cpu hit
+    if(!player_next_to_hit && ball.transform->position.y > Constants::TABLE_LENGTH_COORDS.y) {
+        on_cpu_hit();
+    }
+    //check for miss
+    if(ball.transform->position.y < Constants::TABLE_LENGTH_COORDS.x - 2.0f) {
+        reset();
+    }
 
 	{ //update listener to camera position:
 		glm::mat4x3 frame = camera->transform->make_local_to_parent();
@@ -179,10 +169,10 @@ void PlayMode::update(float elapsed) {
 	}
 
 	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
+//	left.downs = 0;
+//	right.downs = 0;
+//	up.downs = 0;
+//	down.downs = 0;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
@@ -217,12 +207,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Score: " + std::to_string(score),
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Score: " + std::to_string(score),
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
@@ -230,7 +220,78 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	GL_ERRORS();
 }
 
-glm::vec3 PlayMode::get_leg_tip_position() {
-	//the vertex position here was read from the model in blender:
-	return lower_leg->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
+void PlayMode::on_swing_attempt() {
+    //TODO: check collision, pass in ball transform
+//    if(player_paddle.can_swing()) {//collision & check cooldown
+        std::cout << "swing!\n";
+        player_paddle.swing();
+//        if(player_next_to_hit && player_paddle.check_ball_collision(ball.transform)) {
+        if(player_next_to_hit && true) {
+            on_hit();
+        }
+//    }
+}
+
+void PlayMode::on_hit() {
+    std::cout << "hit!\n";
+    //TODO: play sound
+    player_next_to_hit = false;
+    //generate new timing_info and rally locations
+     ball.gen_rally_locations(ball.current_rally_locations.end);
+
+    //update score
+    score++;
+    if(score > high_score) {
+        high_score = score;
+    }
+    //new timing
+    generate_timing();
+}
+
+void PlayMode::on_bounce() {
+    std::cout << "bounce!\n";
+    //TODO: play sound
+
+
+}
+
+void PlayMode::on_cpu_hit() {
+    std::cout << "cpu hit!\n";
+    //TODO: play sound
+
+    player_next_to_hit = true;
+    ball.gen_rally_locations(ball.current_rally_locations.end);
+    generate_timing();
+}
+
+void PlayMode::reset() {
+    std::cout << "reset!\n";
+//    score = 0;
+//    time_elapsed = 0;
+//    game_state = Start;
+}
+
+void PlayMode::generate_timing() {
+    if(score >= pattern.score_to_switch_pattern) {
+        generate_pattern();
+    }
+
+    //generate new timing info
+    struct TimingInfo new_timing{
+            pattern.pattern_rally_time,
+            timing_info.current_rally_complete + new_timing.rally_time,
+            timing_info.current_rally_complete,
+    };
+    timing_info = new_timing;
+
+    std::cout <<"new timing: \n" << new_timing.previous_rally_complete << "\n" << new_timing.rally_time << "\n" << new_timing.current_rally_complete << "\n";
+}
+
+void PlayMode::generate_pattern() {
+    std::cout << "new patterm!\n";
+    //TODO: make different patterns
+    PatternInfo new_pattern;
+    new_pattern.score_to_switch_pattern = score + 8;
+    new_pattern.pattern_rally_time = Constants::QUARTER_NOTE_TIME;
+    pattern = new_pattern;
 }
