@@ -11,6 +11,7 @@ Ball::Ball() {
 
 Ball::Ball(Scene::Transform *_transform) {
     transform = _transform;
+    original_pos = _transform->position;
 }
 
 void Ball::update(float percent_elapsed) {
@@ -23,7 +24,6 @@ void Ball::update(float percent_elapsed) {
                                               current_rally_locations.end, (percent_elapsed - 0.5f) * 2);
     }
     transform->position = new_loc;
-    std::cout << "new pos:: " << glm::to_string(new_loc) << "\n";
 }
 
 void Ball::gen_rally_locations(glm::vec3 start) {
@@ -41,7 +41,7 @@ void Ball::gen_rally_locations(glm::vec3 start) {
         } else {
             y = Constants::TABLE_LENGTH_COORDS.y;
         }
-        float z = Constants::BALL_BOUNCE_HEIGHT.y + static_cast <float> (rand()) /
+        float z = Constants::BALL_BOUNCE_HEIGHT.x + static_cast <float> (rand()) /
                                                     (static_cast <float> (RAND_MAX / (Constants::BALL_BOUNCE_HEIGHT.y -
                                                                                       Constants::BALL_BOUNCE_HEIGHT.x)));
         current_rally_locations.end = glm::vec3(x, y, z);
@@ -50,7 +50,11 @@ void Ball::gen_rally_locations(glm::vec3 start) {
     glm::vec3 middle = Constants::lerp(current_rally_locations.start, current_rally_locations.end, 0.5f);
     current_rally_locations.bounce = glm::vec3(middle.x, middle.y, 0.0f);
 
-    std::cout << "new locations: \n " << glm::to_string(current_rally_locations.start) << "\n" << glm::to_string(current_rally_locations.bounce) << "\n" << glm::to_string(current_rally_locations.end) << "\n";
+//    std::cout << "new locations: \n " << glm::to_string(current_rally_locations.start) << "\n" << glm::to_string(current_rally_locations.bounce) << "\n" << glm::to_string(current_rally_locations.end) << "\n";
+}
+
+void Ball::reset() {
+
 }
 
 

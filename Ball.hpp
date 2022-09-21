@@ -10,6 +10,7 @@
 
 class Ball {
 private:
+    glm::vec3 original_pos;
 
 public:
     struct RallyLocations {
@@ -24,6 +25,7 @@ public:
     void update(float percent_elapsed);
 
     void gen_rally_locations(glm::vec3 start);
+    void reset();
 
     Scene::Transform *transform;
 

@@ -157,7 +157,7 @@ void PlayMode::update(float elapsed) {
         on_cpu_hit();
     }
     //check for miss
-    if(ball.transform->position.y < Constants::TABLE_LENGTH_COORDS.x - 2.0f) {
+    if(ball.transform->position.y < Constants::TABLE_LENGTH_COORDS.x - 4.0f) {
         reset();
     }
 
@@ -213,27 +213,38 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
 		lines.draw_text("Score: " + std::to_string(score),
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
+			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+        constexpr float H2 = 0.05f;
+        lines.draw_text("High Score: " + std::to_string(high_score),
+                        glm::vec3(-aspect + H + 0.2 * H2, -1.0 + H + 0.2 * H2, 0.0),
+                        glm::vec3(H2, 0.0f, 0.0f), glm::vec3(0.0f, H2, 0.0f),
+                        glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+        ofs = 2.0f / drawable_size.y;
+        lines.draw_text("High Score: " + std::to_string(high_score),
+                        glm::vec3(-aspect + H + 0.2 * H2 + ofs, -1.0 + H + 0.2 * H2 + ofs, 0.0),
+                        glm::vec3(H2, 0.0f, 0.0f), glm::vec3(0.0f, H2, 0.0f),
+                        glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 	}
 	GL_ERRORS();
 }
 
 void PlayMode::on_swing_attempt() {
     //TODO: check collision, pass in ball transform
-//    if(player_paddle.can_swing()) {//collision & check cooldown
-        std::cout << "swing!\n";
+//    if(player_paddle.can_swing()) {//check cooldown
+        std::cout << "swing: ";
+        std::cout << player_paddle.check_ball_collision(ball.transform) << std::endl;
         player_paddle.swing();
-//        if(player_next_to_hit && player_paddle.check_ball_collision(ball.transform)) {
-        if(player_next_to_hit && true) {
+        if(player_next_to_hit && player_paddle.check_ball_collision(ball.transform)) {
             on_hit();
         }
 //    }
 }
 
 void PlayMode::on_hit() {
-    std::cout << "hit!\n";
+//    std::cout << "hit!\n";
     //TODO: play sound
     player_next_to_hit = false;
     //generate new timing_info and rally locations
@@ -249,14 +260,14 @@ void PlayMode::on_hit() {
 }
 
 void PlayMode::on_bounce() {
-    std::cout << "bounce!\n";
+//    std::cout << "bounce!\n";
     //TODO: play sound
 
 
 }
 
 void PlayMode::on_cpu_hit() {
-    std::cout << "cpu hit!\n";
+//    std::cout << "cpu hit!\n";
     //TODO: play sound
 
     player_next_to_hit = true;
@@ -266,9 +277,19 @@ void PlayMode::on_cpu_hit() {
 
 void PlayMode::reset() {
     std::cout << "reset!\n";
-//    score = 0;
-//    time_elapsed = 0;
-//    game_state = Start;
+    score = 0;
+    time_elapsed = 0;
+    game_state = Start;
+
+    struct TimingInfo defTime;
+    timing_info = defTime;
+    struct PatternInfo defPat;
+    pattern = defPat;
+    Ball::RallyLocations new_locations;
+    ball.current_rally_locations = new_locations;
+
+
+    player_next_to_hit = true;
 }
 
 void PlayMode::generate_timing() {
@@ -284,11 +305,11 @@ void PlayMode::generate_timing() {
     };
     timing_info = new_timing;
 
-    std::cout <<"new timing: \n" << new_timing.previous_rally_complete << "\n" << new_timing.rally_time << "\n" << new_timing.current_rally_complete << "\n";
+//    std::cout <<"new timing: \n" << new_timing.previous_rally_complete << "\n" << new_timing.rally_time << "\n" << new_timing.current_rally_complete << "\n";
 }
 
 void PlayMode::generate_pattern() {
-    std::cout << "new patterm!\n";
+//    std::cout << "new patterm!\n";
     //TODO: make different patterns
     PatternInfo new_pattern;
     new_pattern.score_to_switch_pattern = score + 8;
