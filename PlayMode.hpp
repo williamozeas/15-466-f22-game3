@@ -49,7 +49,7 @@ struct PlayMode : Mode {
     TimingInfo timing_info;
 
     struct PatternInfo {
-        uint32_t score_to_switch_pattern = 0;
+        uint32_t score_to_switch_pattern = 5;
         float pattern_rally_time = Constants::QUARTER_NOTE_TIME;
     } pattern;
 

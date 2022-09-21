@@ -117,6 +117,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 on_swing_attempt();
             }
             return true;
+        } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            return true;
         }
     }
     if (evt.type == SDL_MOUSEBUTTONDOWN) {
@@ -133,7 +136,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				evt.motion.xrel / float(window_size.y),
 				-evt.motion.yrel / float(window_size.y)
 			);
-			player_paddle.transform->position += glm::vec3(motion.x, 0, motion.y);
+			player_paddle.transform->position += glm::vec3(motion.x, 0, motion.y) * Constants::MOUSE_SENSITIVITY;
 			return true;
 		}
 	}
@@ -158,13 +161,21 @@ void PlayMode::update(float elapsed) {
         }
     }
 
+    player_paddle.update(elapsed);
+    std::cout << player_paddle.check_ball_collision(ball.transform) << std::endl;
+
+    if(!player_next_to_hit) {
+        cpu_paddle->position = Constants::lerp(cpu_paddle->position, ball.current_rally_locations.end,
+                           0.1f);
+    }
+
     //position checks
     //cpu hit
     if(!player_next_to_hit && ball.transform->position.y > Constants::TABLE_LENGTH_COORDS.y) {
         on_cpu_hit();
     }
     //check for miss
-    if(ball.transform->position.y < Constants::TABLE_LENGTH_COORDS.x - 4.0f) {
+    if(ball.transform->position.y < Constants::TABLE_LENGTH_COORDS.x - 10.0f) {
         reset();
     }
 
@@ -234,42 +245,53 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
                         glm::vec3(-aspect + H + 0.2 * H2 + ofs, -1.0 + H + 0.2 * H2 + ofs, 0.0),
                         glm::vec3(H2, 0.0f, 0.0f), glm::vec3(0.0f, H2, 0.0f),
                         glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+        if(game_state == Start) {
+            constexpr float H3 = 0.2f;
+            lines.draw_text("Press Space To Hit",
+                            glm::vec3(-aspect + 0.1f * H3 + 1, -1.0 + 0.1f * H3 + 1, 0.0),
+                            glm::vec3(H3, 0.0f, 0.0f), glm::vec3(0.0f, H3, 0.0f),
+                            glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+        }
 	}
+
+
 	GL_ERRORS();
 }
 
 void PlayMode::on_swing_attempt() {
     //TODO: check collision, pass in ball transform
-//    if(player_paddle.can_swing()) {//check cooldown
+    if(player_paddle.can_swing()) {//check cooldown
         std::cout << "swing: ";
         std::cout << player_paddle.check_ball_collision(ball.transform) << std::endl;
         player_paddle.swing();
         if(player_next_to_hit && player_paddle.check_ball_collision(ball.transform)) {
             on_hit();
         }
-//    }
+    }
 }
 
 void PlayMode::on_hit() {
 //    std::cout << "hit!\n";
     //TODO: play sound
     if(score == 0) {
-        Sound::play(*ping_pong_low_big);
+        Sound::play(*ping_pong_low_big, 1.5f);
     } else {
-        Sound::play(*ping_pong_low);
+        Sound::play(*ping_pong_low, 1.5f);
     }
 
     player_next_to_hit = false;
     //generate new timing_info and rally locations
      ball.gen_rally_locations(ball.current_rally_locations.end);
 
+    //new timing
+    generate_timing();
+
     //update score
     score++;
     if(score > high_score) {
         high_score = score;
     }
-    //new timing
-    generate_timing();
 }
 
 void PlayMode::on_bounce() {
@@ -283,8 +305,9 @@ void PlayMode::on_cpu_hit() {
 //    std::cout << "cpu hit!\n";
     //start music
     if(score == 1) {
-        music = Sound::loop(*ping_pong_loop);
+        music = Sound::loop(*ping_pong_loop, 1.5f);
     }
+    generate_timing();
 
     //play sound
     if(score % 2 == 1) {
@@ -295,7 +318,6 @@ void PlayMode::on_cpu_hit() {
 
     player_next_to_hit = true;
     ball.gen_rally_locations(ball.current_rally_locations.end);
-    generate_timing();
 }
 
 void PlayMode::reset() {
@@ -338,7 +360,20 @@ void PlayMode::generate_pattern() {
 //    std::cout << "new patterm!\n";
     //TODO: make different patterns
     PatternInfo new_pattern;
-    new_pattern.score_to_switch_pattern = score + 8;
-    new_pattern.pattern_rally_time = Constants::QUARTER_NOTE_TIME;
+    int rand = std::rand() % 10;
+    if(score == 0 || pattern.pattern_rally_time != Constants::QUARTER_NOTE_TIME) {
+        rand = 0;
+    }
+    if(rand < 6) {
+        new_pattern.score_to_switch_pattern = score + 4;
+        new_pattern.pattern_rally_time = Constants::QUARTER_NOTE_TIME;
+    } else if (rand < 8) {
+        new_pattern.score_to_switch_pattern = score + 2;
+        new_pattern.pattern_rally_time = Constants::QUARTER_NOTE_TIME * 2;
+    }
+    else {
+        new_pattern.score_to_switch_pattern = score + 3;
+        new_pattern.pattern_rally_time = Constants::QUARTER_NOTE_TIME * 4/3;
+    }
     pattern = new_pattern;
 }

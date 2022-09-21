@@ -27,20 +27,16 @@ void Paddle::update(float elapsed) {
 }
 
 bool Paddle::check_ball_collision(Scene::Transform *ball) {
-    glm::vec3 ball_corner_one = ball->position + glm::vec3(Constants::BALL_AABB_DIMENSIONS.x / 2,
-                           Constants::BALL_AABB_DIMENSIONS.y / 2, Constants::BALL_AABB_DIMENSIONS.z / 2); //position
-    glm::vec3 ball_corner_two  = ball->position - glm::vec3(Constants::BALL_AABB_DIMENSIONS.x / 2,
-                            Constants::BALL_AABB_DIMENSIONS.y / 2, Constants::BALL_AABB_DIMENSIONS.z / 2);
+    glm::vec3 ball_corner_one = ball->position + Constants::BALL_AABB_DIMENSIONS / 2.0f; //position
+    glm::vec3 ball_corner_two  = ball->position - Constants::BALL_AABB_DIMENSIONS / 2.0f;
 
     glm::vec3 ball_corner_greater(std::max(ball_corner_one.x, ball_corner_two.x), std::max(ball_corner_one.y, ball_corner_two.y),
                                   std::max(ball_corner_one.z, ball_corner_two.z));
     glm::vec3 ball_corner_lesser(std::min(ball_corner_one.x, ball_corner_two.x), std::min(ball_corner_one.y, ball_corner_two.y),
                                  std::min(ball_corner_one.z, ball_corner_two.z));
 
-    glm::vec3 bb_corner_one = transform->position + glm::vec3(Constants::PADDLE_AABB_DIMENSIONS.x / 2,
-                          Constants::PADDLE_AABB_DIMENSIONS.y / 2, Constants::PADDLE_AABB_DIMENSIONS.z / 2);
-    glm::vec3 bb_corner_two  = ball->position - glm::vec3(Constants::PADDLE_AABB_DIMENSIONS.x / 2,
-                          Constants::PADDLE_AABB_DIMENSIONS.y / 2, Constants::PADDLE_AABB_DIMENSIONS.z / 2);
+    glm::vec3 bb_corner_one = transform->position + Constants::PADDLE_AABB_DIMENSIONS / 2.0f + Constants::PADDLE_AABB_OFFSET / 2.0f;
+    glm::vec3 bb_corner_two  = transform->position - Constants::PADDLE_AABB_DIMENSIONS / 2.0f + Constants::PADDLE_AABB_OFFSET;
 
     glm::vec3 bb_corner_greater(std::max(bb_corner_one.x, bb_corner_two.x), std::max(bb_corner_one.y, bb_corner_two.y),
                                 std::max(bb_corner_one.z, bb_corner_two.z));
@@ -50,22 +46,15 @@ bool Paddle::check_ball_collision(Scene::Transform *ball) {
     bool x_coll = false;
     bool y_coll = false;
     bool z_coll = false;
-    if((ball_corner_lesser.x <= bb_corner_lesser.x && ball_corner_greater.x >= bb_corner_lesser.x)
-       || (ball_corner_lesser.x >= bb_corner_lesser.x && ball_corner_lesser.x <= bb_corner_greater.x)) {
+    if (ball_corner_lesser.x <= bb_corner_greater.x && ball_corner_greater.x >= bb_corner_lesser.x) {
         x_coll = true;
     }
-    if((ball_corner_lesser.y <= bb_corner_lesser.y && ball_corner_greater.y >= bb_corner_lesser.y)
-       || (ball_corner_lesser.y >= bb_corner_lesser.y && ball_corner_lesser.y <= bb_corner_greater.y)) {
+    if (ball_corner_lesser.y <= bb_corner_greater.y && ball_corner_greater.y >= bb_corner_lesser.y) {
         y_coll = true;
     }
-    if((ball_corner_lesser.z <= bb_corner_lesser.z && ball_corner_greater.z >= bb_corner_lesser.z)
-       || (ball_corner_lesser.y >= bb_corner_lesser.y && ball_corner_lesser.y <= bb_corner_greater.y)) {
+    if (ball_corner_lesser.z <= bb_corner_greater.z && ball_corner_greater.z >= bb_corner_lesser.z) {
         z_coll = true;
     }
-
-//    if(x_coll && y_coll) {
-//        std::cout << transform->name << " collided with " << other_transform->name << std::endl;
-//    }
 
     return x_coll && y_coll && z_coll;
 }
