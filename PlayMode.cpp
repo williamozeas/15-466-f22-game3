@@ -4,7 +4,6 @@
 
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
-#include "Load.hpp"
 #include "gl_errors.hpp"
 #include "data_path.hpp"
 
@@ -36,8 +35,44 @@ Load< Scene > ping_pong_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("dusty-floor.opus"));
+Load< Sound::Sample > ping_pong_loop(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("audio/Ping Pong Loop.opus"));
+});
+
+Load< Sound::Sample > ping_pong_bounce_01(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongBounce01.opus"));
+});
+
+Load< Sound::Sample > ping_pong_bounce_02(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongBounce02.opus"));
+});
+
+Load< Sound::Sample > ping_pong_bounce_03(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongBounce03.opus"));
+});
+
+Load< Sound::Sample > ping_pong_bounce_04(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongBounce04.opus"));
+});
+
+Load< Sound::Sample > ping_pong_drop(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongDrop01.opus"));
+});
+
+Load< Sound::Sample > ping_pong_hi_big(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongHitHiBig.opus"));
+});
+
+Load< Sound::Sample > ping_pong_hi(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongHitHi.opus"));
+});
+
+Load< Sound::Sample > ping_pong_low_big(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongHitLowBig.opus"));
+});
+
+Load< Sound::Sample > ping_pong_low(LoadTagDefault, []() -> Sound::Sample const * {
+    return new Sound::Sample(data_path("audio/PingPongHitLow.opus"));
 });
 
 PlayMode::PlayMode() : scene(*ping_pong_scene) {
@@ -56,6 +91,11 @@ PlayMode::PlayMode() : scene(*ping_pong_scene) {
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
+    bounce_sfx.push_back(*ping_pong_bounce_01);
+    bounce_sfx.push_back(*ping_pong_bounce_02);
+    bounce_sfx.push_back(*ping_pong_bounce_03);
+    bounce_sfx.push_back(*ping_pong_bounce_04);
+
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
 //	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
@@ -67,51 +107,18 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-        if(evt.key.keysym.sym == SDLK_SPACE) {
-            if(game_state == Start) {
+        if (evt.key.keysym.sym == SDLK_SPACE) {
+            if (game_state == Start) {
                 game_state = Playing;
                 timing_info.previous_rally_complete = 0;
+                Sound::stop_all_samples();
                 on_hit();
             } else {
                 on_swing_attempt();
             }
             return true;
         }
-//		if (evt.key.keysym.sym == SDLK_ESCAPE) {
-//			SDL_SetRelativeMouseMode(SDL_FALSE);
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_a) {
-//			left.downs += 1;
-//			left.pressed = true;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_d) {
-//			right.downs += 1;
-//			right.pressed = true;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_w) {
-//			up.downs += 1;
-//			up.pressed = true;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_s) {
-//			down.downs += 1;
-//			down.pressed = true;
-//			return true;
-		}
-//	} else if (evt.type == SDL_KEYUP) {
-//		if (evt.key.keysym.sym == SDLK_a) {
-//			left.pressed = false;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_d) {
-//			right.pressed = false;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_w) {
-//			up.pressed = false;
-//			return true;
-//		} else if (evt.key.keysym.sym == SDLK_s) {
-//			down.pressed = false;
-//			return true;
-//		}
-//	} else
+    }
     if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -246,6 +253,12 @@ void PlayMode::on_swing_attempt() {
 void PlayMode::on_hit() {
 //    std::cout << "hit!\n";
     //TODO: play sound
+    if(score == 0) {
+        Sound::play(*ping_pong_low_big);
+    } else {
+        Sound::play(*ping_pong_low);
+    }
+
     player_next_to_hit = false;
     //generate new timing_info and rally locations
      ball.gen_rally_locations(ball.current_rally_locations.end);
@@ -261,14 +274,24 @@ void PlayMode::on_hit() {
 
 void PlayMode::on_bounce() {
 //    std::cout << "bounce!\n";
-    //TODO: play sound
 
-
+    int rand = std::rand() % 4;
+    Sound::play(bounce_sfx.at(rand));
 }
 
 void PlayMode::on_cpu_hit() {
 //    std::cout << "cpu hit!\n";
-    //TODO: play sound
+    //start music
+    if(score == 1) {
+        music = Sound::loop(*ping_pong_loop);
+    }
+
+    //play sound
+    if(score % 2 == 1) {
+        Sound::play(*ping_pong_hi_big);
+    } else {
+        Sound::play(*ping_pong_hi);
+    }
 
     player_next_to_hit = true;
     ball.gen_rally_locations(ball.current_rally_locations.end);
@@ -287,7 +310,10 @@ void PlayMode::reset() {
     pattern = defPat;
     Ball::RallyLocations new_locations;
     ball.current_rally_locations = new_locations;
+    ball.transform->position = glm::vec3(0, 0, 1.0f);
 
+    lose_sfx = Sound::play(*ping_pong_drop);
+    music->stop();
 
     player_next_to_hit = true;
 }

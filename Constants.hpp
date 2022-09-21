@@ -12,7 +12,7 @@ struct Constants {
     constexpr static glm::vec2 TABLE_LENGTH_COORDS = glm::vec2(-5, 5);
     constexpr static glm::vec2 BALL_BOUNCE_HEIGHT = glm::vec2(0.2f, 2.5f);
 
-    constexpr static glm::vec3 PADDLE_AABB_DIMENSIONS = glm::vec3(0.9f, 0.5f, 0.9f);
+    constexpr static glm::vec3 PADDLE_AABB_DIMENSIONS = glm::vec3(0.9f, 0.75f, 0.9f);
     constexpr static glm::vec3 BALL_AABB_DIMENSIONS = glm::vec3(0.15f, 0.15f, 0.15f);
 
     constexpr static float SWING_CD_TIME = 1.0f;

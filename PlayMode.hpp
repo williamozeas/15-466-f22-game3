@@ -4,6 +4,7 @@
 #include "Sound.hpp"
 #include "Paddle.hpp"
 #include "Ball.hpp"
+#include "Load.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -74,8 +75,11 @@ struct PlayMode : Mode {
 
 //
 
-	//music coming from the tip of the leg (as a demonstration):
-	std::shared_ptr< Sound::PlayingSample > leg_tip_loop;
+	//music:
+	std::shared_ptr< Sound::PlayingSample > music;
+    std::shared_ptr< Sound::PlayingSample > lose_sfx;
+
+    std::vector< Sound::Sample > bounce_sfx;
 	
 	//camera:
 	Scene::Camera *camera = nullptr;
